@@ -114,8 +114,8 @@ def validate(model, valloader, criterion, device):
 def main():
         CONFIG = {
             "model": "ResNet18",   # Change name when using a different model
-            "batch_size": 8, # run batch size finder to find optimal batch size
-            "learning_rate": 0.1,
+            "batch_size": 512, # run batch size finder to find optimal batch size
+            "learning_rate": 0.01,
             "epochs": 5,  # Train for longer in a real scenario
             "num_workers": 4, # Adjust based on your system
             "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
@@ -158,8 +158,18 @@ def main():
         print("\nModel summary:")
         print(f"{model}\n")
 
+
+        SEARCH_BATCH_SIZES = False
+        if SEARCH_BATCH_SIZES:
+            from utils import find_optimal_batch_size
+            print("Finding optimal batch size...")
+            optimal_batch_size = find_optimal_batch_size(model, trainset, CONFIG["device"], CONFIG["num_workers"])
+            CONFIG["batch_size"] = optimal_batch_size
+            print(f"Using batch size: {CONFIG['batch_size']}")
+
+
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.SGD(model.parameters(), lr=CONFIG["learning_rate"], momentum=0.9)
+        optimizer = optim.SGD(model.parameters(), lr=CONFIG["learning_rate"], momentum=0.9, weight_decay=5e-4)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
         wandb.init(project=CONFIG["wandb_project"], config=CONFIG)
