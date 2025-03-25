@@ -22,11 +22,34 @@ class SimpleCNN(nn.Module):
     def __init__(self):
         super(SimpleCNN, self).__init__()
         # TODO - define the layers of the network you will use
-        ...
+        # Convolutional layers
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, stride=1, padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1)
+        self.bn3 = nn.BatchNorm2d(128)
+        
+        # Pooling
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        # Fully connected layers
+        self.fc1 = nn.Linear(128 * 4 * 4, 256)  # After 3 pooling layers: 32 → 16 → 8 → 4
+        self.fc2 = nn.Linear(256, 100)  # 100 classes in CIFAR-100
+        
+        # Dropout
+        self.dropout = nn.Dropout(0.5)
     
     def forward(self, x):
         # TODO - define the forward pass of the network you will use
-        ...
+        x = self.pool(F.relu(self.bn1(self.conv1(x))))
+        x = self.pool(F.relu(self.bn2(self.conv2(x))))
+        x = self.pool(F.relu(self.bn3(self.conv3(x))))
+        
+        x = x.view(x.size(0), -1)  # Flatten
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
 
         return x
 
@@ -50,11 +73,20 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
         # move inputs and labels to the target device
         inputs, labels = inputs.to(device), labels.to(device)
 
-        ### TODO - Your code here
-        ...
+        # ### TODO - Your code here
+        # ...
 
-        running_loss += ...   ### TODO
-        _, predicted = ...    ### TODO
+        # running_loss += ...   ### TODO
+        # _, predicted = ...    ### TODO
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+        _, predicted = torch.max(outputs, 1)
+
 
         total += labels.size(0)
         correct += predicted.eq(labels).sum().item()
@@ -87,11 +119,18 @@ def validate(model, valloader, criterion, device):
             # move inputs and labels to the target device
             inputs, labels = inputs.to(device), labels.to(device)
 
-            outputs = ... ### TODO -- inference
-            loss = ...    ### TODO -- loss calculation
+            # outputs = ... ### TODO -- inference
+            # loss = ...    ### TODO -- loss calculation
 
-            running_loss += ...  ### SOLUTION -- add loss from this sample
-            _, predicted = ...   ### SOLUTION -- predict the class
+            # running_loss += ...  ### SOLUTION -- add loss from this sample
+            # _, predicted = ...   ### SOLUTION -- predict the class
+
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+
+            running_loss += loss.item()
+            _, predicted = torch.max(outputs, 1)
+
 
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
@@ -134,17 +173,28 @@ def main():
     #      Data Transformation (Example - You might want to modify) 
     ############################################################################
 
+    # transform_train = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), # Example normalization
+    # ])
+
+    # ###############
+    # # TODO Add validation and test transforms - NO augmentation for validation/test
+    # ###############
+
+    # # Validation and test transforms (NO augmentation)
+    # transform_test = ...   ### TODO -- BEGIN SOLUTION
     transform_train = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(32, padding=4),
         transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), # Example normalization
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
 
-    ###############
-    # TODO Add validation and test transforms - NO augmentation for validation/test
-    ###############
-
-    # Validation and test transforms (NO augmentation)
-    transform_test = ...   ### TODO -- BEGIN SOLUTION
+    transform_test = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
 
     ############################################################################
     #       Data Loading
@@ -153,24 +203,35 @@ def main():
     trainset = torchvision.datasets.CIFAR100(root='./data', train=True,
                                             download=True, transform=transform_train)
 
-    # Split train into train and validation (80/20 split)
-    train_size = ...   ### TODO -- Calculate training set size
-    val_size = ...     ### TODO -- Calculate validation set size
-    trainset, valset = ...  ### TODO -- split into training and validation sets
+    # # Split train into train and validation (80/20 split)
+    # train_size = ...   ### TODO -- Calculate training set size
+    # val_size = ...     ### TODO -- Calculate validation set size
+    # trainset, valset = ...  ### TODO -- split into training and validation sets
 
-    ### TODO -- define loaders and test set
-    trainloader = ...
-    valloader = ...
+    # ### TODO -- define loaders and test set
+    # trainloader = ...
+    # valloader = ...
 
-    # ... (Create validation and test loaders)
-    testset = ...
-    testloader = ...
-    
+    # # ... (Create validation and test loaders)
+    # testset = ...
+    # testloader = ...
+    train_size = int(0.8 * len(trainset))
+    val_size = len(trainset) - train_size
+    trainset, valset = torch.utils.data.random_split(trainset, [train_size, val_size])
+
+    testset = torchvision.datasets.CIFAR100(root='./data', train=False, download=True, transform=transform_test)
+
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=CONFIG["batch_size"], shuffle=True, num_workers=CONFIG["num_workers"])
+    valloader = torch.utils.data.DataLoader(valset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=CONFIG["num_workers"])
+    testloader = torch.utils.data.DataLoader(testset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=CONFIG["num_workers"])
+
+
     ############################################################################
     #   Instantiate model and move to target device
     ############################################################################
-    model = ...   # instantiate your model ### TODO
-    model = model.to(CONFIG["device"])   # move it to target device
+    # model = ...   # instantiate your model ### TODO
+    # model = model.to(CONFIG["device"])   # move it to target device
+    model = SimpleCNN().to(CONFIG["device"])
 
     print("\nModel summary:")
     print(f"{model}\n")
@@ -190,10 +251,12 @@ def main():
     ############################################################################
     # Loss Function, Optimizer and optional learning rate scheduler
     ############################################################################
-    criterion = ...   ### TODO -- define loss criterion
-    optimizer = ...   ### TODO -- define optimizer
-    scheduler = ...  # Add a scheduler   ### TODO -- you can optionally add a LR scheduler
-
+    # criterion = ...   ### TODO -- define loss criterion
+    # optimizer = ...   ### TODO -- define optimizer
+    # scheduler = ...  # Add a scheduler   ### TODO -- you can optionally add a LR scheduler
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-4)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.1)
 
     # Initialize wandb
     wandb.init(project="-sp25-ds542-challenge", config=CONFIG)
