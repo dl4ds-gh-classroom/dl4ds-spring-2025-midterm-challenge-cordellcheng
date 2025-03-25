@@ -33,6 +33,13 @@ class SimpleCNN(nn.Module):
         # Pooling
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         
+        # Additional convolutional layers for better feature extraction
+        self.conv4 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1)
+        self.bn4 = nn.BatchNorm2d(256)
+        self.conv5 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=1, padding=1)
+        self.bn5 = nn.BatchNorm2d(512)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        
         # Fully connected layers
         self.fc1 = nn.Linear(128 * 4 * 4, 256)  # After 3 pooling layers: 32 → 16 → 8 → 4
         self.fc2 = nn.Linear(256, 100)  # 100 classes in CIFAR-100
@@ -154,7 +161,7 @@ def main():
 
     CONFIG = {
         "model": "MyModel",   # Change name when using a different model
-        "batch_size": 8, # run batch size finder to find optimal batch size
+        "batch_size": 512, # run batch size finder to find optimal batch size
         "learning_rate": 0.1,
         "epochs": 5,  # Train for longer in a real scenario
         "num_workers": 4, # Adjust based on your system
@@ -255,7 +262,8 @@ def main():
     # optimizer = ...   ### TODO -- define optimizer
     # scheduler = ...  # Add a scheduler   ### TODO -- you can optionally add a LR scheduler
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-4)
+    # optimizer = optim.Adam(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=1e-4)
+    optimizer = optim.SGD(model.parameters(), lr=CONFIG["learning_rate"], momentum=0.9, weight_decay=5e-4)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.1)
 
     # Initialize wandb
@@ -270,7 +278,7 @@ def main():
     for epoch in range(CONFIG["epochs"]):
         train_loss, train_acc = train(epoch, model, trainloader, optimizer, criterion, CONFIG)
         val_loss, val_acc = validate(model, valloader, criterion, CONFIG["device"])
-        scheduler.step()
+        scheduler.step(train_loss)
 
         # log to WandB
         wandb.log({
