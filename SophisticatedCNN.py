@@ -115,8 +115,8 @@ def main():
         CONFIG = {
             "model": "ResNet18",   # Change name when using a different model
             "batch_size": 512, # run batch size finder to find optimal batch size
-            "learning_rate": 0.01,
-            "epochs": 5,  # Train for longer in a real scenario
+            "learning_rate": 0.1,
+            "epochs": 50,  # Train for longer in a real scenario
             "num_workers": 4, # Adjust based on your system
             "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
             "data_dir": "./data",  # Make sure this directory exists
