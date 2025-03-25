@@ -162,7 +162,7 @@ def main():
     CONFIG = {
         "model": "MyModel",   # Change name when using a different model
         "batch_size": 512, # run batch size finder to find optimal batch size
-        "learning_rate": 0.1,
+        "learning_rate": 0.001,
         "epochs": 5,  # Train for longer in a real scenario
         "num_workers": 4, # Adjust based on your system
         "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
@@ -226,10 +226,10 @@ def main():
     val_size = len(trainset) - train_size
     trainset, valset = torch.utils.data.random_split(trainset, [train_size, val_size])
 
-    testset = torchvision.datasets.CIFAR100(root='./data', train=False, download=True, transform=transform_test)
 
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=CONFIG["batch_size"], shuffle=True, num_workers=CONFIG["num_workers"])
     valloader = torch.utils.data.DataLoader(valset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=CONFIG["num_workers"])
+    testset = torchvision.datasets.CIFAR100(root='./data', train=False, download=True, transform=transform_test)
     testloader = torch.utils.data.DataLoader(testset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=CONFIG["num_workers"])
 
 
